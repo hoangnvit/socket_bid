@@ -1,0 +1,184 @@
+<!-- /**
+ * StAuth10222: I Van Hoang Nguyen, 000763153 certify that this material is my original work. 
+ * No other person's work has been used without due acknowledgement. 
+ * I have not made my work available to anyone else.
+ */ -->
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Auction</title>
+</head>
+
+<body>
+  <h1>Auction's Page</h1>
+  <div id="clock"></div>
+  <form id="form" action="">
+    <label for="name">Name:</label> <input type="text" id="name"> <br />
+    <label for="price">Price:</label> <input type="text" id="price"> <br />
+    <label for="time_limit">Time Limit</label> <input type="range" id="time_limit" name="time_limit" min="10" max="80"
+      step="10">
+    <input type="submit">
+  </form>
+  <button id="new" hidden>New </button>
+
+  <H2 id="highest_bid"></H2>
+  <H2 id="received_bid"></H2>
+
+  <table id="bidder_table" style="margin-top:35px;"></table>
+
+  <table id="bidded_table" style="margin-top:35px;"></table>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+  <script>
+
+    // Make the connection
+    var socket = io();
+
+    // submit handler
+    $("#form").submit(function () {
+      name = $("#name").val();
+      price_str = $("#price").val();
+      time_limit = $("#time_limit").val();
+      if ((name == "") || (price_str == "") || isNaN(price_str) || parseInt(price_str) <= 0) {
+
+
+        alert(" Wrong input. Name and price are required. Price musb be a number greater than 0");
+      }
+      else {
+        price = parseInt(price_str);
+
+        $('#form').hide();
+        $("#bidder_table").show();
+        $("#bidded_table").show();
+
+
+        // console.log(name, price, time_limit);
+        start = true;
+
+        socket.emit("auction_start",
+          {
+            start: true,
+            name: name,
+            price: price,
+            bidder_name: "Auctioneer"
+          });
+
+        updateTimer();
+      }
+
+
+      return false;
+
+    })
+
+    $("#new").click(function () {
+
+      $("#form").show();
+      $("#clock").html("");
+      $("#new").hide();
+      $("#bidder_table").html("");
+      $("#bidded_table").html("");
+      $("#highest_bid").html("");
+      $("#received_bid").html("");
+      $("#name").val('');
+      $("#price").val('');
+      received_bid
+
+
+
+    });
+
+    function updateTimer() {
+      time_limit = time_limit - 1;
+      $("#clock").html(time_limit).css("color", "yellow").css({ 'font-size': 20 });
+
+
+      if (time_limit != 0) {
+        setTimeout(
+          updateTimer,
+          1000);
+      } else {
+
+        $("#new").show();
+      }
+
+
+      socket.emit("auction_data",
+        {
+          time_limit: time_limit,
+          name: name,
+          price: price
+        });
+
+
+    }
+
+    // update 2 table
+    socket.on("bidded_list", function (data) {
+      // create table of all times of bid
+      str = "";
+      str += "<tr  style='margin-top:35px;border: 1px solid black;'><td  style='margin-top:35px;border: 1px solid black;'>Bidder Name</td><td  style='margin-top:35px;border: 1px solid black;'>Bid Price</td></tr>";
+      bidded_list = data.bidded_list;
+      bidder_names = data.bidder_names;
+      for (let i = bidded_list.length - 1; i >= 0; i--) {
+        temp = "<tr  style='margin-top:35px;border: 1px solid black;'><td style='margin-top:35px;border: 1px solid black;'>" + bidded_list[i].bidder_name + "</td><td  style='margin-top:35px;border: 1px solid black;'>" + bidded_list[i].bid + "</td></tr>";
+        str += temp;
+      }
+
+      $("#bidded_table").html(str);
+
+
+
+      str2 = "";
+      str2 += "<tr  style='margin-top:35px;border: 1px solid black;'><td  style='margin-top:35px;border: 1px solid black;'>Bidder Name</td> <td  style='margin-top:35px;border: 1px solid black;'>Highest Bid</td><td  style='margin-top:35px;border: 1px solid black;'>Total Bids</td></tr>";
+
+
+      for (let j = 0; j < bidder_names.length; j++) {
+        max = 0;
+        total = 0;
+
+        for (let k = 0; k < bidded_list.length; k++) {
+
+          if (bidded_list[k].bidder_name == bidder_names[j]) {
+
+            if (bidded_list[k].bid > max) max = bidded_list[k].bid;
+            total += parseInt(bidded_list[k].bid);
+          }
+        }
+        // if (max >= 0) {
+          temp = "<tr  style='margin-top:35px;border: 1px solid black;'><td  style='margin-top:35px;border: 1px solid black;'>" + bidder_names[j] + "</td> <td  style='margin-top:35px;border: 1px solid black;'>" + max + "</td><td  style='margin-top:35px;border: 1px solid black;'>" + total + "</td></tr>";
+          if (total != 0) {  str2 += temp;
+        }
+
+
+      }
+      $("#bidder_table").html(str2);
+
+      // get info of total and highest bidder
+      temp_highest = 0;
+      temp_total = 0;
+      temp_name = "";
+      for (let x = 0; x < bidded_list.length; x++) {
+        if (bidded_list[x].bidder_name != "auctioneer") temp_total += bidded_list[x].bid;
+        if ((bidded_list[x].bid > temp_highest)) {
+          temp_name = bidded_list[x].bidder_name
+          temp_highest = bidded_list[x].bid;
+        }
+
+
+      }
+
+      $("#highest_bid").html(" Highest From " + temp_name + " with " + temp_highest + " bids");
+      $("#received_bid").html(" Total received(not in clude from Auctioneer): " + temp_total);
+
+
+
+    });
+
+
+  </script>
+</body>
+
+</html>

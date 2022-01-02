@@ -1,0 +1,180 @@
+<!-- /**
+ * StAuth10222: I Van Hoang Nguyen, 000763153 certify that this material is my original work. 
+ * No other person's work has been used without due acknowledgement. 
+ * I have not made my work available to anyone else.
+ */ -->
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Bidder</title>
+</head>
+
+<body>
+  <h1>Bidder's Page</h1>
+  <div id="clock"></div>
+  <form id="form" action="">
+    <label for="name"> Bidder Name:</label> <input type="text" id="name"> <br />
+
+    <input type="submit">
+  </form>
+  <div id="winner"></div>
+  <div id="greeting" hidden style="color:blue; font-size:35px">
+    <h1>Waiting for the next Auction</h1>
+  </div>
+  <H1 id="auc_name"> </H1>
+  <h1 id="highest_bid"> </h1>
+  <h1 id="highest_name"> </h1>
+  <h1 id="total_bid"> </h1>
+
+
+  <form id="bid_form" action="" hidden>
+    <label for="name"> Number of bids:</label> <input type="text" id="num_bid"> <br />
+
+    <input type="submit" id="sb_bid">
+    <div id="message"></div>
+
+  </form>
+
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+  <script>
+
+    // Make the connection
+    var socket = io();
+    var login = false;
+    var max_name;
+    var max_bid;
+    // submit handler
+    $("#form").submit(function () {
+      name = $("#name").val();
+
+      if ((name != "")) {
+
+        $('#form').hide();
+        $('#greeting').show();
+
+        // console.log(name);
+
+        socket.emit("bidder_name",
+          {
+            name: name,
+
+          });
+      }
+
+
+      login = true;
+
+      return false;
+
+    })
+
+    socket.on("start_status", function (data) {
+      start_auction = data;
+      // console.log("start "+ JSON.stringify(start_auction));
+      if (start_auction.start && login) {
+        $("#sb_bid").show();
+        $("#greeting").hide();
+        $("#bid_form").show();
+        init = false;
+        $("#auc_name").html("Item Name: " + data.name).css({ 'font-size': 25 });
+        $("#highest_bid").html(" Current Highest bid price: " + data.price).css({ 'font-size': 25 });
+        $("#highest_name").html(" Current highest bidder: " + data.bidder_name).css({ 'font-size': 25 });
+        $("#winner").html("");
+        $("#greeting").hide();
+        $("#message").html("");
+        $("#num_bid").val('');
+        max_name = data.name;
+        max_bid = data.price;
+
+
+
+
+        socket.on("server_auditon_data", function (data) {
+          $("#clock").html(data.time_limit).css("color", "yellow").css({ 'font-size': 20 });
+          if (data.time_limit === 0) {
+
+            $("#sb_bid").hide();
+            $('#greeting').show();
+
+            $("#highest_bid").html("");
+            $("#highest_name").html("");
+
+
+            $("#winner").html("The winner is: " + max_name + "  with the highest bid price: " + max_bid).css("color", "blue").css({ 'font-size': 25 });
+
+
+
+          }
+
+
+
+        });
+
+
+
+
+
+
+      }
+    });
+
+
+
+    $("#bid_form").submit(function () {
+
+      num_bit = parseInt($("#num_bid").val());
+
+      socket.on("highest_bid", function (data) {
+
+        highest_bid = data.highest_bid;
+
+
+        if (num_bit < highest_bid) $("#message").html("bid too low").css("color", "red");;
+        if (num_bit > highest_bid) $("#message").html("You are the current highest bidder!").css("color", "green");;
+
+
+
+      });
+
+      socket.emit("bid",
+        {
+          bidder_name: name,
+          bid: num_bit
+
+        });
+
+
+
+      return false;
+
+    });
+
+
+    socket.on("bidded_list", function (data) {
+
+      bidded_list = data.bidded_list;
+
+      for (let i = 0; i < bidded_list.length; i++) {
+        if (bidded_list[i].bid > max_bid) {
+          max_bid = bidded_list[i].bid;
+          max_name = bidded_list[i].bidder_name;
+        }
+
+
+        $("#highest_bid").html("Current highest bid price: " + max_bid);
+        $("#highest_name").html("Current highest bidder: " + max_name);
+
+
+      }
+
+    });
+
+
+
+  </script>
+</body>
+
+</html>
